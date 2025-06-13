@@ -3,6 +3,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const db = require('../db');
 const router = express.Router();
+const verifyToken = require('../middleware/auth');
+
 
 // 🔐 REGISTER ROUTE
 router.post('/register', async (req, res) => {
@@ -83,8 +85,8 @@ router.post('/login', (req, res) => {
   );
 });
 
-// 👥 GET all usernames (now properly outside the login route)
-router.get('/users', (req, res) => {
+// 👥 GET all usernames (προστατευμένο, ώστε να δουλεύει το JWT)
+router.get('/users', verifyToken, (req, res) => {
   console.log('🔸 Received request to get all usernames');
 
   db.query('SELECT username FROM users', (err, results) => {
@@ -93,11 +95,11 @@ router.get('/users', (req, res) => {
       return res.status(500).json({ error: 'Database error' });
     }
 
-    const usernames = results.map(row => row.username);
+    const usernames = results.map(r => r.username);
     console.log(`✅ Found ${usernames.length} user(s):`, usernames);
-
     res.json({ success: true, users: usernames });
   });
 });
+
 
 module.exports = router;
