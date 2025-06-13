@@ -4,6 +4,12 @@ const verifyToken = require('../middleware/auth');
 const generateProjectId = require('../utils/generateProjectId');
 const router = express.Router();
 
+
+
+// =============================================================
+// ======================= 📁 PROJECT ROUTES ====================
+// =============================================================
+
 // 🔨 Create a new project
 router.post('/', verifyToken, async (req, res) => {
   const { name, description, deadline, assignees } = req.body;
@@ -228,6 +234,10 @@ router.delete('/:project_id', verifyToken, (req, res) => {
   });
 });
 
+// =============================================================
+// ===================== 💬 PROJECT CHAT ========================
+// =============================================================
+
 // 💬 Send message to project chat
 router.post('/:project_id/chat', verifyToken, (req, res) => {
   const { project_id } = req.params;
@@ -282,6 +292,239 @@ router.get('/:project_id/chat', verifyToken, (req, res) => {
     }
   );
 });
+
+// ✏️ Edit a chat message
+router.put('/:project_id/chat/:message_id', verifyToken, (req, res) => {
+  const { project_id, message_id } = req.params;
+  const { message } = req.body;
+  const userId = req.user.id;
+
+  console.log(`✏️ Edit chat message ${message_id} by user ${userId} in ${project_id}`);
+
+  if (!message || message.trim() === '') {
+    return res.status(400).json({ error: 'Message content required.' });
+  }
+
+  // First, check if the user owns this message
+  db.query(
+    'SELECT * FROM project_chat WHERE id = ? AND project_id = ? AND user_id = ?',
+    [message_id, project_id, userId],
+    (err, results) => {
+      if (err) {
+        console.error('❌ DB error during message lookup:', err);
+        return res.status(500).json({ error: 'DB error' });
+      }
+
+      if (results.length === 0) {
+        return res.status(403).json({ error: 'Unauthorized or message not found.' });
+      }
+
+      db.query(
+        'UPDATE project_chat SET message = ?, edited_at = NOW() WHERE id = ?',
+        [message, message_id],
+        (err2) => {
+          if (err2) {
+            console.error('❌ DB error during message update:', err2);
+            return res.status(500).json({ error: 'DB update error' });
+          }
+
+          console.log(`✅ Message ${message_id} updated`);
+          res.json({ success: true, message: 'Message updated' });
+        }
+      );
+    }
+  );
+});
+
+// 🗑️ Delete a chat message
+router.delete('/:project_id/chat/:message_id', verifyToken, (req, res) => {
+  const { project_id, message_id } = req.params;
+  const userId = req.user.id;
+
+  console.log(`🗑️ Delete chat message ${message_id} from project ${project_id} by user ${userId}`);
+
+  // Only allow deletion if user is the author
+  db.query(
+    'SELECT * FROM project_chat WHERE id = ? AND project_id = ? AND user_id = ?',
+    [message_id, project_id, userId],
+    (err, results) => {
+      if (err) {
+        console.error('❌ DB error on chat lookup:', err);
+        return res.status(500).json({ error: 'DB error' });
+      }
+
+      if (results.length === 0) {
+        return res.status(403).json({ error: 'Unauthorized or message not found.' });
+      }
+
+      db.query(
+        'DELETE FROM project_chat WHERE id = ?',
+        [message_id],
+        (err2) => {
+          if (err2) {
+            console.error('❌ DB error on chat delete:', err2);
+            return res.status(500).json({ error: 'Could not delete message' });
+          }
+
+          console.log(`✅ Message ${message_id} deleted`);
+          res.json({ success: true, message: 'Message deleted' });
+        }
+      );
+    }
+  );
+});
+
+// =============================================================
+// ===================== ✅ PROJECT TASKS =======================
+// =============================================================
+
+// ✅ Create a new task
+router.post('/:project_id/tasks', verifyToken, (req, res) => {
+  const { project_id } = req.params;
+  const { description } = req.body;
+  const userId = req.user.id;
+
+  if (!description) {
+    return res.status(400).json({ error: 'Description is required.' });
+  }
+
+  db.query(
+    `INSERT INTO project_tasks (project_id, description, created_by)
+     VALUES (?, ?, ?)`,
+    [project_id, description, userId],
+    (err) => {
+      if (err) {
+        console.error('❌ Error creating task:', err);
+        return res.status(500).json({ error: 'Failed to create task.' });
+      }
+
+      console.log(`✅ Task created in ${project_id} by user ${userId}`);
+      res.json({ success: true, message: 'Task created.' });
+    }
+  );
+});
+
+// 📋 Get all tasks for a project
+router.get('/:project_id/tasks', verifyToken, (req, res) => {
+  const { project_id } = req.params;
+
+  db.query(
+    `SELECT t.*, u.username AS created_by_name, d.username AS done_by_name
+     FROM project_tasks t
+     JOIN users u ON t.created_by = u.id
+     LEFT JOIN users d ON t.done_by = d.id
+     WHERE t.project_id = ?
+     ORDER BY t.created_at ASC`,
+    [project_id],
+    (err, results) => {
+      if (err) {
+        console.error('❌ Error fetching tasks:', err);
+        return res.status(500).json({ error: 'Failed to fetch tasks.' });
+      }
+
+      res.json({ success: true, tasks: results });
+    }
+  );
+});
+
+// ✅ Mark task as done
+router.put('/:project_id/tasks/:task_id/done', verifyToken, (req, res) => {
+  const { project_id, task_id } = req.params;
+  const userId = req.user.id;
+
+  db.query(
+    `UPDATE project_tasks
+     SET is_done = TRUE, done_by = ?, done_at = NOW()
+     WHERE id = ? AND project_id = ?`,
+    [userId, task_id, project_id],
+    (err) => {
+      if (err) {
+        console.error('❌ Error marking task as done:', err);
+        return res.status(500).json({ error: 'Failed to mark task as done.' });
+      }
+
+      console.log(`✅ Task ${task_id} marked as done by user ${userId}`);
+      res.json({ success: true, message: 'Task completed.' });
+    }
+  );
+});
+// ✏️ Edit task description
+router.put('/:project_id/tasks/:task_id', verifyToken, (req, res) => {
+  const { project_id, task_id } = req.params;
+  const { description } = req.body;
+  const userId = req.user.id;
+
+  if (!description || description.trim() === '') {
+    return res.status(400).json({ error: 'Description is required.' });
+  }
+
+  // Only creator of the task can edit
+  db.query(
+    `SELECT * FROM project_tasks WHERE id = ? AND project_id = ? AND created_by = ?`,
+    [task_id, project_id, userId],
+    (err, results) => {
+      if (err) {
+        console.error('❌ DB error on edit lookup:', err);
+        return res.status(500).json({ error: 'DB error' });
+      }
+
+      if (results.length === 0) {
+        return res.status(403).json({ error: 'Unauthorized or task not found.' });
+      }
+
+      db.query(
+        `UPDATE project_tasks SET description = ? WHERE id = ?`,
+        [description, task_id],
+        (err2) => {
+          if (err2) {
+            console.error('❌ DB error on edit:', err2);
+            return res.status(500).json({ error: 'Failed to update task.' });
+          }
+
+          console.log(`✅ Task ${task_id} edited by user ${userId}`);
+          res.json({ success: true, message: 'Task updated.' });
+        }
+      );
+    }
+  );
+});
+
+// 🗑️ Delete task
+router.delete('/:project_id/tasks/:task_id', verifyToken, (req, res) => {
+  const { project_id, task_id } = req.params;
+  const userId = req.user.id;
+
+  // Only creator of the task can delete
+  db.query(
+    `SELECT * FROM project_tasks WHERE id = ? AND project_id = ? AND created_by = ?`,
+    [task_id, project_id, userId],
+    (err, results) => {
+      if (err) {
+        console.error('❌ DB error on delete lookup:', err);
+        return res.status(500).json({ error: 'DB error' });
+      }
+
+      if (results.length === 0) {
+        return res.status(403).json({ error: 'Unauthorized or task not found.' });
+      }
+
+      db.query(
+        `DELETE FROM project_tasks WHERE id = ?`,
+        [task_id],
+        (err2) => {
+          if (err2) {
+            console.error('❌ DB error on delete:', err2);
+            return res.status(500).json({ error: 'Failed to delete task.' });
+          }
+
+          console.log(`✅ Task ${task_id} deleted by user ${userId}`);
+          res.json({ success: true, message: 'Task deleted.' });
+        }
+      );
+    }
+  );
+});
+
 
 
 module.exports = router;
