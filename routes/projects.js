@@ -69,19 +69,20 @@ router.get('/', verifyToken, (req, res) => {
 
   console.log(`🔸 Fetching project list (page ${page}, limit ${limit})`);
 
-  const query = `
+    const query = `
     SELECT 
-      p.project_id,
-      p.description,
-      p.deadline,
-      p.created_at,
-      u.username AS assignee
+        p.project_id,
+        p.description,
+        p.deadline,
+        p.created_at,
+        u.username AS assignee
     FROM projects p
-    JOIN project_assignments pa ON p.project_id = pa.project_id
-    JOIN users u ON pa.user_id = u.id
+    LEFT JOIN project_assignments pa ON p.project_id = pa.project_id
+    LEFT JOIN users u ON pa.user_id = u.id
     ORDER BY p.created_at DESC
     LIMIT ? OFFSET ?
-  `;
+    `;
+
 
   db.query(query, [limit, offset], (err, results) => {
     if (err) {
