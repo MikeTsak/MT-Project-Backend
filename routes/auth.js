@@ -83,4 +83,21 @@ router.post('/login', (req, res) => {
   );
 });
 
+// 👥 GET all usernames (now properly outside the login route)
+router.get('/users', (req, res) => {
+  console.log('🔸 Received request to get all usernames');
+
+  db.query('SELECT username FROM users', (err, results) => {
+    if (err) {
+      console.error('❌ Error fetching users:', err);
+      return res.status(500).json({ error: 'Database error' });
+    }
+
+    const usernames = results.map(row => row.username);
+    console.log(`✅ Found ${usernames.length} user(s):`, usernames);
+
+    res.json({ success: true, users: usernames });
+  });
+});
+
 module.exports = router;

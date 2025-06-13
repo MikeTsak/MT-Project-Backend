@@ -38,3 +38,6 @@ app.use('/', testRoute);
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
 });
+
+const projectRoutes = require('./routes/projects');
+app.use('/projects', projectRoutes);
