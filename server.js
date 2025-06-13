@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const authRoutes = require('./routes/auth');
 const testRoute = require('./routes/test');
+const projectRoutes = require('./routes/projects');
 require('dotenv').config();
 
 const app = express();
@@ -23,7 +24,8 @@ app.use(cors({
       callback(new Error('Not allowed by CORS'));
     }
   },
-  methods: ['GET', 'POST'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
 
@@ -32,12 +34,10 @@ app.use(express.json());
 
 // 🛣️ Routes
 app.use('/auth', authRoutes);
-app.use('/', testRoute); 
+app.use('/', testRoute);
+app.use('/projects', projectRoutes); // ✅ Put this before listen just for clean structure
 
 // 🚀 Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
 });
-
-const projectRoutes = require('./routes/projects');
-app.use('/projects', projectRoutes);
