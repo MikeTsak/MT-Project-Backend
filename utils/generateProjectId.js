@@ -5,13 +5,14 @@ async function generateProjectId() {
     db.query('SELECT COUNT(*) AS count FROM projects', (err, results) => {
       if (err) return reject(err);
 
-      const count = results[0].count + 1;
+      const count = results[0].count + 1; // Next number
       const now = new Date();
-      const day = String(now.getDate()).padStart(2, '0');
-      const month = now.toLocaleString('en-US', { month: 'short' }).toUpperCase();
-      const year = now.getFullYear();
 
-      const projectId = `D${day}${month}${year}MT${String(count).padStart(4, '0')}`;
+      const month = now.toLocaleString('en-US', { month: 'short' }).toUpperCase(); // e.g. JUN
+      const year = String(now.getFullYear()).slice(-2); // e.g. 25
+      const number = String(count).padStart(3, '0'); // e.g. 123
+
+      const projectId = `${month}${year}P${number}`; // e.g. JUN25P123
       resolve(projectId);
     });
   });

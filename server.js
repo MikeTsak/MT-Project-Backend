@@ -1,14 +1,15 @@
 const express = require('express');
 const cors = require('cors');
 const authRoutes = require('./routes/auth');
-const testRoute = require('./routes/test');
 const projectRoutes = require('./routes/projects');
+const userRoutes = require('./routes/users');
+const testRoutes = require('./routes/test');
 require('dotenv').config();
 
 const app = express();
 const PORT = 5000;
 
-// 🔐 CORS setup για συγκεκριμένα origins
+// 🔐 CORS setup
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
@@ -29,13 +30,14 @@ app.use(cors({
   credentials: true
 }));
 
-// 📦 Middleware για JSON parsing
+// 📦 Middleware
 app.use(express.json());
 
 // 🛣️ Routes
 app.use('/auth', authRoutes);
-app.use('/', testRoute);
-app.use('/projects', projectRoutes); // ✅ Put this before listen just for clean structure
+app.use('/projects', projectRoutes);
+app.use('/user', userRoutes);
+app.use('/', testRoutes); // 👈 Αυτή είναι η αρχική σελίδα με το status
 
 // 🚀 Start server
 app.listen(PORT, () => {

@@ -101,5 +101,23 @@ router.get('/users', verifyToken, (req, res) => {
   });
 });
 
+// 🙋‍♂️ GET current user info from token
+router.get('/me', verifyToken, (req, res) => {
+  if (!req.user || !req.user.username) {
+    return res.status(400).json({ error: 'Invalid token or user data missing.' });
+  }
+
+  console.log(`🔸 /me request for user: ${req.user.username}`);
+  res.json({
+    success: true,
+    user: {
+      id: req.user.id,
+      username: req.user.username
+    }
+  });
+});
+
+
+
 
 module.exports = router;
