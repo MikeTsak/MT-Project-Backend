@@ -34,7 +34,7 @@ router.get('/me/projects', verifyToken, (req, res) => {
 });
 
 // 🔍 Get projects assigned to a specific username
-router.get('/users/:username/projects', verifyToken, (req, res) => {
+router.get('/:username/projects', verifyToken, (req, res) => {
   const { username } = req.params;
 
   console.log(`🔎 Fetching projects assigned to username: ${username}`);
