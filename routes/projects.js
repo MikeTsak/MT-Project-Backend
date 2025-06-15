@@ -251,7 +251,6 @@ router.delete('/:project_id', verifyToken, (req, res) => {
 // ===================== 💬 PROJECT CHAT ========================
 // =============================================================
 
-// 💬 Send message to project chat and notify subscribed users
 router.post('/:project_id/chat', verifyToken, (req, res) => {
   const { project_id } = req.params;
   const { message } = req.body;
@@ -276,40 +275,9 @@ router.post('/:project_id/chat', verifyToken, (req, res) => {
 
       console.log(`✅ Message added to project ${project_id} chat`);
 
-      // Fetch all push subscriptions for this project
-      const subQuery = `
-        SELECT endpoint, p256dh, auth 
-        FROM push_subscriptions 
-        WHERE project_id = ?
-      `;
+      // REMOVED: Push notification logic
 
-      db.query(subQuery, [project_id], (err, subscriptions) => {
-        if (err) {
-          console.error('❌ Error fetching push subscriptions:', err);
-          return res.json({ success: true, message: 'Message sent (but push failed).' });
-        }
-
-        const payload = JSON.stringify({
-          title: `📢 New message in ${project_id}`,
-          body: message
-        });
-
-        subscriptions.forEach(sub => {
-          const pushSubscription = {
-            endpoint: sub.endpoint,
-            keys: {
-              p256dh: sub.p256dh,
-              auth: sub.auth
-            }
-          };
-
-          webpush.sendNotification(pushSubscription, payload).catch(err => {
-            console.warn('⚠️ Push error:', err.statusCode, err.body);
-          });
-        });
-
-        res.json({ success: true, message: 'Message sent and push triggered.' });
-      });
+      res.json({ success: true, message: 'Message sent.' });
     }
   );
 });

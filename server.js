@@ -61,21 +61,21 @@ app.use('/', testRoutes);
 app.listen(PORT, async () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
 
-  // try {
-  //   db.query('SELECT email, username FROM users WHERE id = 1', async (err, results) => {
-  //     if (err || results.length === 0) {
-  //       return console.error('❌ Failed to fetch user 1 for startup email.');
-  //     }
+  try {
+    db.query('SELECT email, username FROM users WHERE id = 1', async (err, results) => {
+      if (err || results.length === 0) {
+        return console.error('❌ Failed to fetch user 1 for startup email.');
+      }
 
-  //     const { email, username } = results[0];
-  //     const projectName = '⚙️SERVER STARTUP⚙️';
-  //     const projectId = 'welcome-tasky'; // or an actual project ID if you prefer
+      const { email, username } = results[0];
+      const projectName = '⚙️SERVER STARTUP⚙️';
+      const projectId = 'welcome-tasky'; // or an actual project ID if you prefer
 
-  //     await mailer.sendProjectAssignedEmail(email, username, projectName, projectId);
-  //     console.log(`📧 Startup email sent to ${username} (${email})`);
-  //   });
-  // } catch (e) {
-  //   console.error('🔥 Failed to send startup email:', e.message);
-  // }
+      await mailer.sendProjectAssignedEmail(email, username, projectName, projectId);
+      console.log(`📧 Startup email sent to ${username} (${email})`);
+    });
+  } catch (e) {
+    console.error('🔥 Failed to send startup email:', e.message);
+  }
 });
 
