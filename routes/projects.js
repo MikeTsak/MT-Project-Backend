@@ -4,7 +4,7 @@ const verifyToken = require('../middleware/auth');
 const generateProjectId = require('../utils/generateProjectId');
 const router = express.Router();
 const webpush = require('web-push');
-
+const { sendProjectAssignedEmail } = require('./utils/mailer');
 
 
 // =============================================================
@@ -35,9 +35,9 @@ router.post('/', verifyToken, async (req, res) => {
         }
 
         db.query(
-          `SELECT id FROM users WHERE username IN (?)`,
+          `SELECT id, email FROM users WHERE username IN (?)`,
           [assignees],
-          (err2, users) => {
+          async (err2, users) => {
             if (err2) {
               console.error('❌ Error fetching assignee user IDs:', err2);
               return res.status(500).json({ error: 'DB error with assignees.' });
@@ -48,13 +48,24 @@ router.post('/', verifyToken, async (req, res) => {
             db.query(
               'INSERT INTO project_assignments (project_id, user_id) VALUES ?',
               [assignmentValues],
-              (err3) => {
+              async (err3) => {
                 if (err3) {
                   console.error('❌ Error assigning users to project:', err3);
                   return res.status(500).json({ error: 'Failed to assign users.' });
                 }
 
                 console.log(`✅ Project ${projectId} created by user ${req.user.username}`);
+
+                // 🔔 Send email notifications
+                for (const u of users) {
+                  try {
+                    await mailer.sendProjectAssignedEmail(u.email, name);
+                    console.log(`📧 Email sent to ${u.email}`);
+                  } catch (emailErr) {
+                    console.warn(`⚠️ Email failed for ${u.email}:`, emailErr.message);
+                  }
+                }
+
                 res.json({ success: true, project_id: projectId, message: 'Project created and assigned.' });
               }
             );
@@ -67,6 +78,7 @@ router.post('/', verifyToken, async (req, res) => {
     res.status(500).json({ error: 'Internal server error.' });
   }
 });
+
 
 // 📄 Get all projects (paginated)
 router.get('/', verifyToken, (req, res) => {
