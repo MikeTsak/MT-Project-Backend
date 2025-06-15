@@ -4,6 +4,9 @@ const webpush = require('web-push');
 const dotenv = require('dotenv');
 dotenv.config();
 
+const db = require('./db');
+const mailer = require('./utils/mailer');
+
 const authRoutes = require('./routes/auth');
 const projectRoutes = require('./routes/projects');
 const userRoutes = require('./routes/users');
@@ -52,9 +55,27 @@ app.get('/vapid-key', (req, res) => {
 app.use('/auth', authRoutes);
 app.use('/projects', projectRoutes);
 app.use('/user', userRoutes);
-app.use('/', testRoutes); 
+app.use('/', testRoutes);
 
-// 🚀 Start server
-app.listen(PORT, () => {
+// 🚀 Start server and send mail to user 1
+app.listen(PORT, async () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
+
+  try {
+    db.query('SELECT email, username FROM users WHERE id = 1', async (err, results) => {
+      if (err || results.length === 0) {
+        return console.error('❌ Failed to fetch user 1 for startup email.');
+      }
+
+      const { email, username } = results[0];
+      const projectName = '⚙️SERVER STARTUP⚙️';
+      const projectId = 'welcome-tasky'; // or an actual project ID if you prefer
+
+      await mailer.sendProjectAssignedEmail(email, username, projectName, projectId);
+      console.log(`📧 Startup email sent to ${username} (${email})`);
+    });
+  } catch (e) {
+    console.error('🔥 Failed to send startup email:', e.message);
+  }
 });
+

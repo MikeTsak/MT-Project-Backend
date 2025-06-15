@@ -2,10 +2,32 @@ const express = require('express');
 const db = require('../db');
 const axios = require('axios');
 const router = express.Router();
+const nodemailer = require('nodemailer');
+
+const testMailer = async () => {
+  const transporter = nodemailer.createTransport({
+    host: 'mail.privateemail.com',
+    port: 465,
+    secure: true,
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+
+  try {
+    await transporter.verify();
+    return '🟢 Mail Server Ready';
+  } catch (e) {
+    console.error('❌ Mail Server Error:', e.message);
+    return '🔴 Mail Server Error';
+  }
+};
 
 router.get('/', async (req, res) => {
   let dbStatus = '🔴 DB Connection Failed';
   let frontendStatus = '🟡 Checking...';
+  let mailStatus = '🟡 Checking...';
   let dbResult = null;
   let dbPing = '—';
 
@@ -31,6 +53,8 @@ router.get('/', async (req, res) => {
   } catch (e) {
     frontendStatus = '🔴 Frontend Offline';
   }
+
+  mailStatus = await testMailer();
 
   res.send(`
     <!DOCTYPE html>
@@ -87,6 +111,7 @@ router.get('/', async (req, res) => {
         <p><strong>Backend:</strong> 🟢 Express Server Running</p>
         <p><strong>Database:</strong> ${dbStatus} ${dbResult !== null ? `(Result: ${dbResult}, Ping: ${dbPing})` : ''}</p>
         <p><strong>Frontend:</strong> ${frontendStatus}</p>
+        <p><strong>Mail:</strong> ${mailStatus}</p>
       </div>
 
       <div class="game">

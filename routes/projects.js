@@ -4,7 +4,7 @@ const verifyToken = require('../middleware/auth');
 const generateProjectId = require('../utils/generateProjectId');
 const router = express.Router();
 const webpush = require('web-push');
-const { sendProjectAssignedEmail } = require('./utils/mailer');
+const { sendProjectAssignedEmail } = require('../utils/mailer');
 
 
 // =============================================================
