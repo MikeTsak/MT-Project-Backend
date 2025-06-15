@@ -3,6 +3,7 @@ const db = require('../db');
 const verifyToken = require('../middleware/auth');
 const generateProjectId = require('../utils/generateProjectId');
 const router = express.Router();
+const webpush = require('web-push');
 
 
 
@@ -238,7 +239,7 @@ router.delete('/:project_id', verifyToken, (req, res) => {
 // ===================== 💬 PROJECT CHAT ========================
 // =============================================================
 
-// 💬 Send message to project chat
+// 💬 Send message to project chat and notify subscribed users
 router.post('/:project_id/chat', verifyToken, (req, res) => {
   const { project_id } = req.params;
   const { message } = req.body;
@@ -251,6 +252,7 @@ router.post('/:project_id/chat', verifyToken, (req, res) => {
     return res.status(400).json({ error: 'Message is required.' });
   }
 
+  // Insert chat message
   db.query(
     'INSERT INTO project_messages (project_id, user_id, message) VALUES (?, ?, ?)',
     [project_id, userId, message],
@@ -261,11 +263,44 @@ router.post('/:project_id/chat', verifyToken, (req, res) => {
       }
 
       console.log(`✅ Message added to project ${project_id} chat`);
-      res.json({ success: true, message: 'Message sent.' });
+
+      // Fetch all push subscriptions for this project
+      const subQuery = `
+        SELECT endpoint, p256dh, auth 
+        FROM push_subscriptions 
+        WHERE project_id = ?
+      `;
+
+      db.query(subQuery, [project_id], (err, subscriptions) => {
+        if (err) {
+          console.error('❌ Error fetching push subscriptions:', err);
+          return res.json({ success: true, message: 'Message sent (but push failed).' });
+        }
+
+        const payload = JSON.stringify({
+          title: `📢 New message in ${project_id}`,
+          body: message
+        });
+
+        subscriptions.forEach(sub => {
+          const pushSubscription = {
+            endpoint: sub.endpoint,
+            keys: {
+              p256dh: sub.p256dh,
+              auth: sub.auth
+            }
+          };
+
+          webpush.sendNotification(pushSubscription, payload).catch(err => {
+            console.warn('⚠️ Push error:', err.statusCode, err.body);
+          });
+        });
+
+        res.json({ success: true, message: 'Message sent and push triggered.' });
+      });
     }
   );
 });
-
 // 📜 Get all chat messages for a project
 router.get('/:project_id/chat', verifyToken, (req, res) => {
   const { project_id } = req.params;
