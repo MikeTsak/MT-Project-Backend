@@ -1,13 +1,16 @@
 const express = require('express');
 const cors = require('cors');
+const webpush = require('web-push');
+const dotenv = require('dotenv');
+dotenv.config();
+
 const authRoutes = require('./routes/auth');
 const projectRoutes = require('./routes/projects');
 const userRoutes = require('./routes/users');
 const testRoutes = require('./routes/test');
-require('dotenv').config();
 
 const app = express();
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
 // 🔐 CORS setup
 const allowedOrigins = [
@@ -33,11 +36,23 @@ app.use(cors({
 // 📦 Middleware
 app.use(express.json());
 
+// 💥 Setup webpush with VAPID keys
+webpush.setVapidDetails(
+  'mailto:your@email.com',
+  process.env.VAPID_PUBLIC_KEY,
+  process.env.VAPID_PRIVATE_KEY
+);
+
+// 🔑 Serve public VAPID key to frontend
+app.get('/vapid-key', (req, res) => {
+  res.json({ key: process.env.VAPID_PUBLIC_KEY });
+});
+
 // 🛣️ Routes
 app.use('/auth', authRoutes);
 app.use('/projects', projectRoutes);
 app.use('/user', userRoutes);
-app.use('/', testRoutes); // 👈 Αυτή είναι η αρχική σελίδα με το status
+app.use('/', testRoutes); 
 
 // 🚀 Start server
 app.listen(PORT, () => {
