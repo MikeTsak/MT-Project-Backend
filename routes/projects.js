@@ -35,12 +35,16 @@ router.post('/', verifyToken, async (req, res) => {
         }
 
         db.query(
-          `SELECT id, email FROM users WHERE username IN (?)`,
+          `SELECT id, email, username FROM users WHERE username IN (?)`,
           [assignees],
           async (err2, users) => {
             if (err2) {
               console.error('❌ Error fetching assignee user IDs:', err2);
               return res.status(500).json({ error: 'DB error with assignees.' });
+            }
+
+            if (!users || users.length === 0) {
+              return res.status(400).json({ error: 'No valid assignees found.' });
             }
 
             const assignmentValues = users.map(u => [projectId, u.id]);
@@ -56,11 +60,11 @@ router.post('/', verifyToken, async (req, res) => {
 
                 console.log(`✅ Project ${projectId} created by user ${req.user.username}`);
 
-                // 🔔 Send email notifications
+                // 🔔 Send email notifications with projectId and username
                 for (const u of users) {
                   try {
-                    await mailer.sendProjectAssignedEmail(u.email, name);
-                    console.log(`📧 Email sent to ${u.email}`);
+                    await sendProjectAssignedEmail(u.email, u.username, name, projectId);
+                    console.log(`📧 Email sent to ${u.username} (${u.email})`);
                   } catch (emailErr) {
                     console.warn(`⚠️ Email failed for ${u.email}:`, emailErr.message);
                   }
@@ -78,6 +82,7 @@ router.post('/', verifyToken, async (req, res) => {
     res.status(500).json({ error: 'Internal server error.' });
   }
 });
+
 
 
 // 📄 Get all projects (paginated)
